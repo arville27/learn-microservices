@@ -1,4 +1,4 @@
-package net.arville.repository.specification;
+package net.arville.util;
 
 import net.arville.enumeration.SpecificationOperation;
 

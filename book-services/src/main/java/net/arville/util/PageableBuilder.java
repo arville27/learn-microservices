@@ -14,13 +14,15 @@ public class PageableBuilder {
     private Integer pageSize;
     private Integer pageNumber;
     private Sort.Direction sortType;
+    private boolean isUsingDefaultField;
 
-    public PageableBuilder() {
+    public PageableBuilder(String defaultSortField) {
         this.sortFields = new ArrayList<>();
-        this.sortFields.add("bookName");
+        this.sortFields.add(defaultSortField);
         this.pageSize = ResponseConfig.RESPONSE_PAGE_SIZE;
         this.pageNumber = 0;
         this.sortType = Sort.DEFAULT_DIRECTION;
+        this.isUsingDefaultField = true;
     }
 
     public Pageable build() {
@@ -43,12 +45,23 @@ public class PageableBuilder {
     }
 
     public PageableBuilder addSortField(List<String> sortFields) {
-        this.sortFields.addAll(sortFields);
+        if (isUsingDefaultField) {
+            this.sortFields.clear();
+            this.sortFields.addAll(sortFields);
+            isUsingDefaultField = false;
+        } else {
+            this.sortFields.addAll(sortFields);
+        }
         return this;
     }
 
     public PageableBuilder addSortField(String field) {
-        this.sortFields.add(field);
+        if (isUsingDefaultField) {
+            this.sortFields.set(0, field);
+            isUsingDefaultField = false;
+        } else {
+            this.sortFields.add(field);
+        }
         return this;
     }
 

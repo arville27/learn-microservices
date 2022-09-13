@@ -1,5 +1,6 @@
 package net.arville.service;
 
+import net.arville.enumeration.SpecificationOperation;
 import net.arville.exception.ItemNotFoundException;
 import net.arville.model.Book;
 import net.arville.model.BookActivity;
@@ -7,9 +8,9 @@ import net.arville.payload.PaginationResponse;
 import net.arville.repository.BookActivityRepository;
 import net.arville.repository.BookRepository;
 import net.arville.payload.UpdateResponse;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import net.arville.util.CriteriaQueryBuilder;
+import net.arville.util.PageableBuilder;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -18,8 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,11 +35,13 @@ public class BookService {
     private final BookActivityRepository bookActivityRepository;
 
     private final RestTemplate restTemplate;
+    private final EntityManager em;
 
-    public BookService(BookRepository bookRepository, BookActivityRepository bookActivityRepository, RestTemplate restTemplate) {
+    public BookService(BookRepository bookRepository, BookActivityRepository bookActivityRepository, RestTemplate restTemplate, EntityManager em) {
         this.bookRepository = bookRepository;
         this.bookActivityRepository = bookActivityRepository;
         this.restTemplate = restTemplate;
+        this.em = em;
     }
 
     public Book addBook(Book book) {
@@ -43,16 +49,73 @@ public class BookService {
         return bookRepository.save(book);
     }
 
-    public PaginationResponse getAllBookBy(Specification<Book> specsCriteria, Pageable pageable) {
-        Page<Book> books = bookRepository.findAll(specsCriteria, pageable);
+    public PaginationResponse getAllBookBy(
+            String bookName,
+            String author,
+            String startDateStr,
+            String endDateStr,
+            String sortType,
+            String sortField,
+            Integer pageNumber
+    ) {
+        CriteriaQueryBuilder<Book> queryBuilder = new CriteriaQueryBuilder<>(em, Book.class);
+
+        // Attribute filtering
+        if (bookName != null) {
+            queryBuilder.with("bookName", SpecificationOperation.LIKE, bookName);
+        }
+
+        if (author != null) {
+            queryBuilder.with("author", SpecificationOperation.LIKE, author);
+        }
+
+        if (startDateStr != null) {
+            LocalDateTime startDate = LocalDate.parse(startDateStr).atStartOfDay();
+            queryBuilder.with("createdAt", SpecificationOperation.GREATER_THAN_OR_EQUAL, startDate);
+        }
+
+        if (endDateStr != null) {
+            LocalDateTime endDate = LocalDate.parse(endDateStr).atStartOfDay();
+            queryBuilder.with("createdAt", SpecificationOperation.LESS_THAN_OR_EQUAL, endDate);
+        }
+
+        // Pagination option
+        PageableBuilder pageableBuilder = new PageableBuilder("id");
+        if (sortType != null) {
+            switch (sortType) {
+                case "asc":
+                    pageableBuilder.setSortType(Sort.Direction.ASC);
+                    break;
+                case "desc":
+                    pageableBuilder.setSortType(Sort.Direction.DESC);
+                    break;
+            }
+        }
+
+        if (sortField != null) {
+            pageableBuilder.addSortField(Arrays.asList(sortField.split(",")));
+        }
+
+        if (pageNumber != null) {
+            pageableBuilder.setPageNumber(pageNumber);
+        }
+
+        queryBuilder.setPageable(pageableBuilder.build());
+
+        queryBuilder.selects("id", "bookName", "author", "price");
+
+        var books = queryBuilder.execute();
+
         if (books.getSize() == 0) {
             throw new ItemNotFoundException();
         }
+
         return new PaginationResponse(
                 books.get().collect(Collectors.toList()),
                 books.getNumber() + 1,
                 books.getTotalPages(),
-                books.getTotalElements());
+                books.getTotalElements()
+        );
     }
 
     public Book getBookById(Long id) {
