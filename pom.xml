@@ -70,7 +70,6 @@
             <archive>
               <manifest>
                 <addClasspath>true</addClasspath>
-                <mainClass>net.arville.BookServicesApplication</mainClass>
               </manifest>
             </archive>
             <descriptorRefs>
