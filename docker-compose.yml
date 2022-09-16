@@ -1,0 +1,58 @@
+version: "3"
+
+services:
+  book-services:
+    container_name: book-services
+    image: arville27/bookservices:0.0.1-SNAPSHOT
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+    depends_on:
+      - eureka-server
+    networks:
+      - microservices
+      - dev-db_database
+
+  user-services:
+    container_name: user-services
+    image: arville27/userservices:0.0.1-SNAPSHOT
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+    depends_on:
+      - eureka-server
+    networks:
+      - microservices
+      - dev-db_database
+
+  api-gateway:
+    container_name: api-gateway
+    image: arville27/api-gateway:0.0.1-SNAPSHOT
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - eureka-server
+    ports:
+      - "8080:8080"
+    networks:
+      - microservices
+      - dev-db_database
+
+  eureka-server:
+    container_name: eureka-server
+    image: arville27/eureka-server:0.0.1-SNAPSHOT
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices
+      - dev-db_database
+
+networks:
+  dev-db_database:
+    external: true
+  microservices:
+    driver: bridge

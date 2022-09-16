@@ -21,13 +21,14 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
+                <groupId>com.spotify</groupId>
+                <artifactId>dockerfile-maven-plugin</artifactId>
                 <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>net.arville.BookServicesApplication</mainClass>
-                        </manifest>
-                    </archive>
+                    <tag>${project.version}</tag>
+                    <repository>arville27/${project.artifactId}</repository>
+                    <buildArgs>
+                        <JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
+                    </buildArgs>
                 </configuration>
             </plugin>
         </plugins>
